@@ -1,24 +1,69 @@
 var React = require('react');
-var {CreateForm, SubmitButton, ErrorMessage} = require('react-formation');
+var Formation = require('react-formation');
+var classnames = require('classnames');
 
-var CreditCard = require('./CreditCard.jsx');
+var CreateForm = Formation.CreateForm;
+var SubmitButton = Formation.SubmitButton;
+var ErrorMessage = Formation.ErrorMessage;
+
+var CardExpiry = require('./CardExpiry.jsx');
+var Currency = require('./Currency.jsx');
+
+var Input = React.createClass({
+  mixins: [Formation.FormMixin],
+  render: function () {
+    var errors = this.validateField(this.props.field);
+    var inputClass = classnames('input', {
+      valid: this.didSubmit() && !errors,
+      invalid: this.didSubmit() && errors
+    });
+    return (<div>
+      <input className={inputClass} type={this.props.type || 'text'} placeholder={this.props.label} valueLink={this.linkField(this.props.field)} />
+      <ErrorMessage className="helper-error" field={this.props.field} />
+    </div>);
+  }
+});
+
 
 module.exports = CreateForm({
 
   schema: {
-    name: {
-      required: true,
-      label: 'Name',
+    description: {
+      label: 'Description',
       type: 'string'
     },
-    email: {
-      required: true,
-      label: 'Email',
-      type: 'email'
+    statementDesc: {
+      label: 'Statement Desc',
+      type: 'string'
     },
     cardNumber: {
-      type: 'number',
-      label: 'Credit card number'
+      required: true,
+      label: 'Card number',
+      type: function (card) {
+        if (card.length < 17 && card.length > 14) return false;
+        return 'Enter a valid card number';
+      },
+    },
+    cvcNumber: {
+      label: 'CVC number',
+      type: function (cvc) {
+        if (cvc.length < 5 && cvc.length > 2) return false;
+        return 'Enter a 3- or 4-digit CVC';
+      },
+    },
+    expMonth: {
+      required: true
+    },
+    expYear: {
+      required: true
+    },
+    currency: {
+      required: true
+    },
+    amount: {
+      type: 'dollar',
+      required: true,
+      label: 'Amount'
     }
   },
 
@@ -27,22 +72,46 @@ module.exports = CreateForm({
   },
 
   render: function () {
-    return (<form>
+    return (<div className="stripe-eg">
+      <form>
+        <h2>Create a new payment</h2>
 
-      <div className="form-group">
-        <label>Name</label>
-        <input type="text" name="name" valueLink={this.linkField('name')} />
-        <ErrorMessage field="name" />
-      </div>
+        <Currency />
 
-      <div className="form-group">
-        <label>Email</label>
-        <input type="text" name="email" valueLink={this.linkField('email')} />
-        <ErrorMessage field="email" />
-      </div>
+        <div className="form-group">
+          <label>Amount:</label>
+          <Input label="9.99" field="amount" />
+        </div>
 
-      <CreditCard />
-      <p><SubmitButton /></p>
-    </form>);
+        <div className="form-group">
+          <label>Card number:</label>
+          <Input label="" field="cardNumber" />
+        </div>
+
+        <div className="form-group">
+          <label className="optional">CVC:</label>
+          <Input label="" field="cvcNumber" />
+        </div>
+
+        <CardExpiry />
+
+        <div className="form-group">
+          <label className="optional">Description:</label>
+          <Input label="" field="description" />
+        </div>
+
+        <div className="form-group">
+          <label className="optional">Statement desc:</label>
+          <Input label="" field="statementDesc" />
+        </div>
+
+        <footer>
+          <div className="form-group">
+            <button className="cancel">Cancel</button>
+            <SubmitButton className="submit">Create payment </SubmitButton>
+          </div>
+        </footer>
+      </form>
+    </div>);
   }
 });

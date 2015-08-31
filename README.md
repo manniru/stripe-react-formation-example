@@ -1,6 +1,10 @@
-# React Formation Example
+# Demo React Formation: Stripe's payment form 💸
 
-Test out React Formation! Aw yeah!
+Build Stripe's payment form using [@k88hudson's](https://github.com/k88hudson) rad React Formation library: [github.com/k88hudson/react-formation](https://github.com/k88hudson/react-formation)
+
+The goal of the repo is to show that with just over 100 lines of code, forms and validation can be easy.
+
+![form](https://cldup.com/WQ13L-TbFX.png)
 
 ## To run
 
@@ -9,6 +13,6 @@ npm install
 npm start
 ```
 
-The main code for the form is in `src/components/Form.jsx`. If you want to totally start from scratch, copy the code from `src/components/Blank.jsx` into `Form.jsx`.
+The main code for the form is in `src/components/Form.jsx`.
 
 You can check out the result at http://localhost:7777 in your browser.
