@@ -4,6 +4,8 @@ Build Stripe's payment form using [@k88hudson's](https://github.com/k88hudson) r
 
 The goal of the repo is to show that with just over 100 lines of code, forms and validation can be easy.
 
+**Live version:** [pippinlee.github.io/stripe-react-formation-example/www/](http://pippinlee.github.io/stripe-react-formation-example/www/)
+
 ![form](https://cldup.com/WQ13L-TbFX.png)
 
 ## To run
