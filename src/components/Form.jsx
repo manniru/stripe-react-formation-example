@@ -5,6 +5,7 @@ var classnames = require('classnames');
 var CreateForm = Formation.CreateForm;
 var SubmitButton = Formation.SubmitButton;
 var ErrorMessage = Formation.ErrorMessage;
+var Validator = Formation.Validator;
 
 var CardExpiry = require('./CardExpiry.jsx');
 var Currency = require('./Currency.jsx');
@@ -39,17 +40,11 @@ module.exports = CreateForm({
     cardNumber: {
       required: true,
       label: 'Card number',
-      type: function (card) {
-        if (card.length < 17 && card.length > 14) return false;
-        return 'Enter a valid card number';
-      },
+      type: Validator.number().creditCard()
     },
     cvcNumber: {
       label: 'CVC number',
-      type: function (cvc) {
-        if (cvc.length < 5 && cvc.length > 2) return false;
-        return 'Enter a 3- or 4-digit CVC';
-      },
+      type: Validator.number().min(2).max(5)
     },
     expMonth: {
       required: true
@@ -61,7 +56,7 @@ module.exports = CreateForm({
       required: true
     },
     amount: {
-      type: 'dollar',
+      type: 'currency',
       required: true,
       label: 'Amount'
     }
