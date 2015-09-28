@@ -91,38 +91,40 @@
 	
 	module.exports = CreateForm({
 	
-	  schema: {
-	    description: {
-	      label: 'Description',
-	      type: 'string'
-	    },
-	    statementDesc: {
-	      label: 'Statement Desc',
-	      type: 'string'
-	    },
-	    cardNumber: {
-	      required: true,
-	      label: 'Card number',
-	      type: Validator.number().creditCard()
-	    },
-	    cvcNumber: {
-	      label: 'CVC number',
-	      type: Validator.number().min(2).max(5)
-	    },
-	    expMonth: {
-	      required: true
-	    },
-	    expYear: {
-	      required: true
-	    },
-	    currency: {
-	      required: true
-	    },
-	    amount: {
-	      type: 'currency',
-	      required: true,
-	      label: 'Amount'
-	    }
+	  getSchema: function getSchema() {
+	    return {
+	      description: {
+	        label: 'Description',
+	        type: 'string'
+	      },
+	      statementDesc: {
+	        label: 'Statement Desc',
+	        validations: 'string'
+	      },
+	      cardNumber: {
+	        required: true,
+	        label: 'Card number',
+	        validations: Validator.number().creditCard()
+	      },
+	      cvcNumber: {
+	        label: 'CVC number',
+	        validations: Validator.number().min(2).max(5)
+	      },
+	      expMonth: {
+	        required: true
+	      },
+	      expYear: {
+	        required: true
+	      },
+	      currency: {
+	        required: true
+	      },
+	      amount: {
+	        validations: 'currency',
+	        required: true,
+	        label: 'Amount'
+	      }
+	    };
 	  },
 	
 	  onSuccess: function onSuccess(data) {
@@ -162,15 +164,8 @@
 	var contextConfig = __webpack_require__(10);
 	
 	module.exports = function CreateForm(config) {
-	
-	  if (!config.schema) throw new Error('You must include "schema" as one of the properties for CreateForm');
+	  if (!config.getSchema) throw new Error('You must include "getSchema" as one of the properties for CreateForm');
 	  if (!config.mixins) config.mixins = [];
-	
-	  // If we get an array for the schema,
-	  // assume we want a multi-part form
-	  if (config.schema instanceof Array) {
-	    config.schema = convertSchema(config.schema);
-	  }
 	
 	  // We need this for setting up linked state
 	  if (config.mixins.indexOf(React.addons.LinkedStateMixin) === -1) {
@@ -182,13 +177,20 @@
 	      var _this = this;
 	
 	      var state = {
-	        didSubmit: false,
-	        dirtyFields: {}
+	        __didSubmit: false,
+	        __dirtyFields: {}
 	      };
 	
-	      Object.keys(this.schema).forEach(function (key) {
-	        state.dirtyFields[key] = false;
-	        state[key] = _this.schema[key].initial;
+	      this.__schema = this.getSchema();
+	
+	      // assume we want a multi-part form
+	      if (this.__schema instanceof Array) {
+	        this.__schema = convertSchema(this.__schema);
+	      }
+	
+	      Object.keys(this.__schema).forEach(function (key) {
+	        state.__dirtyFields[key] = false;
+	        state[key] = _this.__schema[key].initial;
 	      });
 	
 	      return state;
@@ -246,7 +248,7 @@
 	module.exports = {
 	
 	  linkField: function linkField(key) {
-	    if (!this.schema[key]) throw new Error('No value "' + key + '" exists in the schema');
+	    if (!this.__schema[key]) throw new Error('No value "' + key + '" exists in the schema');
 	    return this.linkState(key);
 	  },
 	
@@ -254,7 +256,7 @@
 	    var _this = this;
 	
 	    var values = {};
-	    Object.keys(this.schema).forEach(function (key) {
+	    Object.keys(this.__schema).forEach(function (key) {
 	      if (typeof _this.linkField(key).value === 'undefined') return;
 	      values[key] = _this.linkField(key).value;
 	    });
@@ -264,13 +266,13 @@
 	  submitGroup: function submitGroup(group, onSuccess, onError) {
 	    var _this2 = this;
 	
-	    var dirtyFields = this.state.dirtyFields;
+	    var __dirtyFields = this.state.__dirtyFields;
 	
-	    Object.keys(this.schema).forEach(function (key) {
-	      if (_this2.schema[key].group === group) dirtyFields[key] = true;
+	    Object.keys(this.__schema).forEach(function (key) {
+	      if (_this2.__schema[key].group === group) __dirtyFields[key] = true;
 	    });
 	
-	    this.setState({ dirtyFields: dirtyFields });
+	    this.setState({ __dirtyFields: __dirtyFields });
 	
 	    // TODO return values
 	    if (this.isGroupValid(group)) {
@@ -286,21 +288,21 @@
 	    if (e) e.preventDefault();
 	
 	    // Make all fields dirty
-	    var dirtyFields = this.state.dirtyFields;
-	    Object.keys(this.schema).forEach(function (key) {
-	      dirtyFields[key] = true;
+	    var __dirtyFields = this.state.__dirtyFields;
+	    Object.keys(this.__schema).forEach(function (key) {
+	      __dirtyFields[key] = true;
 	    });
 	
 	    this.setState({
-	      dirtyFields: dirtyFields,
-	      didSubmit: true
+	      __dirtyFields: __dirtyFields,
+	      __didSubmit: true
 	    });
 	
 	    if (!this.isValid()) return;
 	
 	    var data = {};
 	
-	    Object.keys(this.schema).forEach(function (key) {
+	    Object.keys(this.__schema).forEach(function (key) {
 	      if (typeof _this3.state[key] !== 'undefined') data[key] = _this3.state[key];
 	    });
 	
@@ -311,40 +313,48 @@
 	
 	  validateField: function validateField(key) {
 	    var errors = [];
-	    var schema = this.schema[key];
+	    var schema = this.__schema[key];
 	    var currentValue = this.state[key];
 	    var label = schema.label || key;
+	    var validator = schema.validations;
 	
+	    if (schema.type) {
+	      console.warn('Using "type" in your schema is deprecated. Please use "validations" instead.');
+	      validator = schema.type;
+	    }
+	
+	    // Required field
 	    if (schema.required === true && !currentValue) errors.push(label + ' is required');
 	    if (typeof schema.required === 'function') {
 	      var isConditionallyRequred = schema.required.bind(this)();
 	      if (isConditionallyRequred && !currentValue) errors.push(label + ' is required');
 	    }
-	    if (currentValue && schema.type instanceof Validator) {
-	      var typeError = schema.type.assert(currentValue);
-	      if (typeError) errors = errors.concat(typeError);
-	    } else if (currentValue && typeof schema.type === 'string' && Validator[schema.type]) {
-	      var typeError = Validator[schema.type]().assert(currentValue);
-	      if (typeError) errors = errors.concat(typeError);
-	    } else if (currentValue && typeof schema.type === 'function') {
-	      var typeError = schema.type.call(this, currentValue);
-	      if (typeError) errors.push(typeError);
+	
+	    // Test validations
+	    var typeError;
+	    if (currentValue && validator instanceof Validator) {
+	      typeError = validator.assert(currentValue);
+	    } else if (currentValue && typeof validator === 'string' && Validator[validator]) {
+	      typeError = Validator[validator]().assert(currentValue);
+	    } else if (currentValue && typeof validator === 'function') {
+	      typeError = validator.call(this, currentValue);
 	    }
+	    if (typeError) errors = errors.concat(typeError);
 	
 	    return errors.length ? errors : false;
 	  },
 	
 	  didSubmit: function didSubmit(field) {
-	    if (!field) return this.state.didSubmit;
-	    return this.state.dirtyFields[field];
+	    if (!field) return this.state.__didSubmit;
+	    return this.state.__dirtyFields[field];
 	  },
 	
 	  isGroupValid: function isGroupValid(groupName) {
 	    var _this4 = this;
 	
 	    var isValid = true;
-	    var fields = Object.keys(this.schema).filter(function (key) {
-	      return _this4.schema[key].group === groupName;
+	    var fields = Object.keys(this.__schema).filter(function (key) {
+	      return _this4.__schema[key].group === groupName;
 	    });
 	    fields.forEach(function (key) {
 	      if (_this4.validateField(key)) isValid = false;
@@ -356,7 +366,7 @@
 	    var _this5 = this;
 	
 	    var isValid = true;
-	    Object.keys(this.schema).forEach(function (key) {
+	    Object.keys(this.__schema).forEach(function (key) {
 	      if (_this5.validateField(key)) isValid = false;
 	    });
 	    return isValid;
@@ -372,7 +382,7 @@
 	var assign = __webpack_require__(8);
 	
 	var Validator = function Validator() {
-	  this.schema = [];
+	  this.validationSchema = [];
 	  this._validator = __webpack_require__(9);
 	  this.messages = assign({}, Validator.messages);
 	};
@@ -398,183 +408,128 @@
 	
 	Validator.definitions = {
 	  email: function email() {
-	    var _this = this;
-	
 	    return {
-	      validate: this._validator.isEmail,
-	      message: function message() {
-	        return _this.messages.email;
-	      }
+	      validate: this._validator.isEmail
 	    };
 	  },
 	  url: function url(options) {
-	    var _this2 = this;
-	
 	    return {
 	      validate: function validate(value) {
 	        return this._validator.isURL(value, options);
-	      },
-	      message: function message() {
-	        return _this2.messages.url;
 	      }
 	    };
 	  },
 	  date: function date() {
-	    var _this3 = this;
-	
 	    return {
-	      validate: this._validator.isDate,
-	      message: function message() {
-	        return _this3.messages.date;
-	      }
+	      validate: this._validator.isDate
 	    };
 	  },
 	  before: function before(_before) {
-	    var _this4 = this;
-	
 	    return {
 	      validate: function validate(value) {
 	        return this._validator.isBefore(value, _before);
 	      },
-	      message: function message() {
-	        return _this4.messages.before.replace('${before}', _before);
+	      message: function message(m) {
+	        return m.replace('${before}', _before);
 	      }
 	    };
 	  },
 	  after: function after(_after) {
-	    var _this5 = this;
-	
 	    return {
 	      validate: function validate(value) {
 	        return this._validator.isAfter(value, _after);
 	      },
-	      message: function message() {
-	        return _this5.messages.after.replace('${after}', _after);
+	      message: function message(m) {
+	        return m.replace('${after}', _after);
 	      }
 	    };
 	  },
 	  number: function number() {
-	    var _this6 = this;
-	
 	    return {
-	      validate: this._validator.isNumeric,
-	      message: function message() {
-	        return _this6.messages.number;
-	      }
+	      validate: this._validator.isNumeric
 	    };
 	  },
 	  alpha: function alpha() {
-	    var _this7 = this;
-	
 	    return {
-	      validate: this._validator.isAlpha,
-	      message: function message() {
-	        return _this7.messages.alpha;
-	      }
+	      validate: this._validator.isAlpha
 	    };
 	  },
 	  max: function max(_max) {
-	    var _this8 = this;
-	
 	    return {
 	      validate: function validate(val) {
 	        return this._validator.isInt(val, { max: _max }) || this._validator.isFloat(val, { max: _max });
 	      },
-	      message: function message() {
-	        return _this8.messages.max.replace('${max}', _max);
+	      message: function message(m) {
+	        return m.replace('${max}', _max);
 	      }
 	    };
 	  },
 	  min: function min(_min) {
-	    var _this9 = this;
-	
 	    return {
 	      validate: function validate(val) {
 	        return this._validator.isInt(val, { min: _min }) || this._validator.isFloat(val, { min: _min });
 	      },
-	      message: function message() {
-	        return _this9.messages.min.replace('${min}', _min);
+	      message: function message(m) {
+	        return m.replace('${min}', _min);
 	      }
 	    };
 	  },
 	  maxLength: function maxLength(max) {
-	    var _this10 = this;
-	
 	    return {
 	      validate: function validate(val) {
 	        return this._validator.isLength(val, 0, max);
 	      },
-	      message: function message() {
-	        return _this10.messages.maxLength.replace('${max}', max);
+	      message: function message(m) {
+	        return m.replace('${max}', max);
 	      }
 	    };
 	  },
 	  minLength: function minLength(min) {
-	    var _this11 = this;
-	
 	    return {
 	      validate: function validate(val) {
 	        return this._validator.isLength(val, min);
 	      },
-	      message: function message() {
-	        return _this11.messages.minLength.replace('${min}', min);
+	      message: function message(m) {
+	        return m.replace('${min}', min);
 	      }
 	    };
 	  },
 	  creditCard: function creditCard() {
-	    var _this12 = this;
-	
 	    return {
-	      validate: this._validator.isCreditCard,
-	      message: function message() {
-	        return _this12.messages.creditCard;
-	      }
+	      validate: this._validator.isCreditCard
 	    };
 	  },
 	  oneOf: function oneOf(allowed) {
-	    var _this13 = this;
+	    var _this = this;
 	
 	    return {
 	      validate: function validate(val) {
-	        return _this13._validator.isIn(val, allowed);
+	        return _this._validator.isIn(val, allowed);
 	      },
-	      message: function message() {
-	        return _this13.messages.oneOf.replace('${allowed}', allowed.join(', '));
+	      message: function message(m) {
+	        return m.replace('${allowed}', allowed.join(', '));
 	      }
 	    };
 	  },
 	  pattern: function pattern(_pattern) {
-	    var _this14 = this;
+	    var _this2 = this;
 	
 	    return {
 	      validate: function validate(val) {
-	        return _this14._validator.matches(val, _pattern);
-	      },
-	      message: function message() {
-	        return _this14.messages.pattern;
+	        return _this2._validator.matches(val, _pattern);
 	      }
 	    };
 	  },
 	  currency: function currency(options) {
-	    var _this15 = this;
-	
 	    return {
 	      validate: function validate(value) {
 	        return this._validator.isCurrency(value, options);
-	      },
-	      message: function message() {
-	        return _this15.messages.currency;
 	      }
 	    };
 	  },
 	  hexColor: function hexColor() {
-	    var _this16 = this;
-	
 	    return {
-	      validate: this._validator.isHexColor,
-	      message: function message() {
-	        return _this16.messages.hexColor;
-	      }
+	      validate: this._validator.isHexColor
 	    };
 	  },
 	  custom: function custom(definition) {
@@ -585,17 +540,37 @@
 	Object.keys(Validator.definitions).forEach(function (key) {
 	  Validator[key] = Validator.prototype[key] = function () {
 	    var instance = this instanceof Validator ? this : new Validator();
-	    instance.schema.push(Validator.definitions[key].apply(instance, arguments));
+	    var args = Array.prototype.slice.call(arguments);
+	    var schema = Validator.definitions[key].apply(instance, arguments);
+	
+	    var lastArg = arguments[arguments.length - 1];
+	    var customMessage = lastArg && typeof lastArg === 'object' && lastArg.message;
+	
+	    // If the validation function specifies a function, run the message template
+	    // through it
+	    if (typeof schema.message === 'function') {
+	      var template = schema.message;
+	      schema.message = function () {
+	        return template.call(instance, customMessage || instance.messages[key] || '');
+	      };
+	    } else {
+	      schema.message = function () {
+	        return customMessage || instance.messages[key] || '';
+	      };
+	    }
+	
+	    instance.validationSchema.push(schema);
+	
 	    return instance;
 	  };
 	});
 	
 	Validator.prototype.assert = function (value, context) {
-	  var _this17 = this;
+	  var _this3 = this;
 	
-	  var results = this.schema.map(function (definition) {
-	    var errorMessage = typeof definition.message === 'function' ? definition.message.call(_this17, value) : definition.message;
-	    return definition.validate.call(context || _this17, value) ? false : errorMessage;
+	  var results = this.validationSchema.map(function (definition) {
+	    var errorMessage = definition.message.call(_this3, value);
+	    return definition.validate.call(context || _this3, value) ? false : errorMessage;
 	  }).filter(function (error) {
 	    return error;
 	  });
@@ -696,7 +671,7 @@
 	
 	    'use strict';
 	
-	    validator = { version: '4.0.5' };
+	    validator = { version: '4.0.6' };
 	
 	    var emailUserPart = /^[a-z\d!#\$%&'\*\+\-\/=\?\^_`{\|}~]+$/i;
 	    var quotedEmailUser = /^([\s\x01-\x08\x0b\x0c\x0e-\x1f\x7f\x21\x23-\x5b\x5d-\x7e]|(\\[\x01-\x09\x0b\x0c\x0d-\x7f]))*$/i;
@@ -743,6 +718,7 @@
 	
 	    var phones = {
 	      'zh-CN': /^(\+?0?86\-?)?1[345789]\d{9}$/,
+	      'zh-TW': /^(\+?886\-?|0)?9\d{8}$/,
 	      'en-ZA': /^(\+?27|0)\d{9}$/,
 	      'en-AU': /^(\+?61|0)4\d{8}$/,
 	      'en-HK': /^(\+?852\-?)?[569]\d{3}\-?\d{4}$/,
@@ -1142,7 +1118,7 @@
 	    validator.isBefore = function (str, date) {
 	        var comparison = validator.toDate(date || new Date())
 	          , original = validator.toDate(str);
-	        return original && comparison && original < comparison;
+	        return !!(original && comparison && original < comparison);
 	    };
 	
 	    validator.isIn = function (str, options) {
@@ -1604,7 +1580,7 @@
 	  },
 	  render: function render() {
 	    var props = assign({}, this.props, {
-	      type: 'radio',
+	      validations: 'radio',
 	      checked: this.props.value + '' === this.props.radioLink.value + '',
 	      onChange: this.onChange
 	    });

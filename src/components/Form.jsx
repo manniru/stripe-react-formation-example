@@ -28,37 +28,39 @@ var Input = React.createClass({
 
 module.exports = CreateForm({
 
-  schema: {
-    description: {
-      label: 'Description',
-      type: 'string'
-    },
-    statementDesc: {
-      label: 'Statement Desc',
-      type: 'string'
-    },
-    cardNumber: {
-      required: true,
-      label: 'Card number',
-      type: Validator.number().creditCard()
-    },
-    cvcNumber: {
-      label: 'CVC number',
-      type: Validator.number().min(2).max(5)
-    },
-    expMonth: {
-      required: true
-    },
-    expYear: {
-      required: true
-    },
-    currency: {
-      required: true
-    },
-    amount: {
-      type: 'currency',
-      required: true,
-      label: 'Amount'
+  getSchema: function() {
+    return {
+      description: {
+        label: 'Description',
+        type: 'string'
+      },
+      statementDesc: {
+        label: 'Statement Desc',
+        validations: 'string'
+      },
+      cardNumber: {
+        required: true,
+        label: 'Card number',
+        validations: Validator.number().creditCard()
+      },
+      cvcNumber: {
+        label: 'CVC number',
+        validations: Validator.number().min(2).max(5)
+      },
+      expMonth: {
+        required: true
+      },
+      expYear: {
+        required: true
+      },
+      currency: {
+        required: true
+      },
+      amount: {
+        validations: 'currency',
+        required: true,
+        label: 'Amount'
+      }
     }
   },
 
